@@ -15,10 +15,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Wand2, ImagePlus, X, Loader2, Sparkles, TrendingUp, Check } from "lucide-react";
+import { Wand2, ImagePlus, X, Loader2, Sparkles, TrendingUp, Check, Zap } from "lucide-react";
 import { PlatformIcon } from "@/components/PlatformIcon";
 
 const PLATFORMS = [
@@ -67,6 +66,10 @@ export default function NewListing() {
   });
   const [showPriceResearch, setShowPriceResearch] = useState(false);
   const [priceQuery, setPriceQuery] = useState("");
+
+  // AI Quick Fill state
+  const [quickFillText, setQuickFillText] = useState("");
+  const [quickFillLoading, setQuickFillLoading] = useState(false);
 
   const createListing = useCreateListing();
   const removeBg = useRemoveBackground();
@@ -130,6 +133,43 @@ export default function NewListing() {
     setImages((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  async function handleQuickFill() {
+    if (!quickFillText.trim()) {
+      toast({ title: "Describe your item first", variant: "destructive" });
+      return;
+    }
+    setQuickFillLoading(true);
+    try {
+      const resp = await fetch("/api/ai/quick-fill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rawText: quickFillText }),
+      });
+      if (!resp.ok) throw new Error("AI request failed");
+      const data = await resp.json();
+
+      if (data.title) setTitle(data.title);
+      if (data.brand) setBrand(data.brand);
+      if (data.size) setSize(data.size);
+      if (data.category) setCategory(data.category);
+      if (data.condition) setCondition(data.condition);
+      if (data.price) setPrice(data.price);
+      if (data.originalPrice) setOriginalPrice(data.originalPrice);
+      if (data.notes) setNotes(data.notes);
+      setDescriptions({
+        poshmark: data.poshmarkDescription ?? "",
+        depop: data.depopDescription ?? "",
+        mercari: data.mercariDescription ?? "",
+      });
+
+      toast({ title: "Form filled!", description: "Review the details and make any tweaks." });
+    } catch (err) {
+      toast({ title: "Quick Fill failed", description: "Try again or fill in manually.", variant: "destructive" });
+    } finally {
+      setQuickFillLoading(false);
+    }
+  }
+
   async function handleGenerateDescriptions() {
     if (!title) { toast({ title: "Add a title first", variant: "destructive" }); return; }
     const result = await generateDesc.mutateAsync({
@@ -165,6 +205,9 @@ export default function NewListing() {
         condition: condition as any,
         platforms: selectedPlatforms,
         imageUrls,
+        poshmarkDescription: descriptions.poshmark || undefined,
+        depopDescription: descriptions.depop || undefined,
+        mercariDescription: descriptions.mercari || undefined,
       },
     });
 
@@ -182,6 +225,44 @@ export default function NewListing() {
           <h1 className="text-2xl font-bold tracking-tight">New Listing</h1>
           <p className="text-sm text-muted-foreground">Fill in the details and post to all platforms at once</p>
         </div>
+
+        {/* AI Quick Fill Banner */}
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-start gap-3">
+              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center shrink-0 mt-0.5">
+                <Zap className="h-4 w-4 text-white" />
+              </div>
+              <div className="flex-1 space-y-2">
+                <div>
+                  <p className="text-sm font-semibold">AI Quick Fill</p>
+                  <p className="text-xs text-muted-foreground">
+                    Describe your item in plain text — AI will fill the entire form and write all platform descriptions at once.
+                  </p>
+                </div>
+                <Textarea
+                  value={quickFillText}
+                  onChange={(e) => setQuickFillText(e.target.value)}
+                  placeholder={`e.g. "Levi's 501 jeans size 32x30, excellent condition, some light fading, I paid $15 at a thrift store"`}
+                  rows={2}
+                  className="text-xs bg-background"
+                />
+                <Button
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={handleQuickFill}
+                  disabled={quickFillLoading}
+                >
+                  {quickFillLoading ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Filling form…</>
+                  ) : (
+                    <><Sparkles className="h-3.5 w-3.5" /> Fill Entire Form with AI</>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left Column */}
@@ -337,7 +418,13 @@ export default function NewListing() {
                       </Button>
                     </div>
                     {soldPrices && (
-                      <div className="space-y-1.5">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+                            {(soldPrices as any).source === "ebay" ? "eBay sold comps" : "Estimated comps"}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">{soldPrices.sampleCount} sales</span>
+                        </div>
                         <div className="grid grid-cols-3 gap-2 text-center">
                           <div className="bg-background rounded p-1.5">
                             <p className="text-xs font-bold">${soldPrices.minPrice}</p>
@@ -351,6 +438,16 @@ export default function NewListing() {
                             <p className="text-xs font-bold">${soldPrices.maxPrice}</p>
                             <p className="text-[10px] text-muted-foreground">High</p>
                           </div>
+                        </div>
+                        {/* Recent sold items */}
+                        <div className="space-y-1">
+                          {soldPrices.items.slice(0, 3).map((item: any, i: number) => (
+                            <div key={i} className="flex items-center justify-between text-[10px] py-1 border-b border-border/50 last:border-0">
+                              <span className="text-muted-foreground truncate flex-1 mr-2">{item.title}</span>
+                              <span className="shrink-0 text-muted-foreground mr-2">{item.platform} · {item.soldDate}</span>
+                              <span className="shrink-0 font-semibold">${item.price}</span>
+                            </div>
+                          ))}
                         </div>
                         <Button
                           data-testid="button-use-suggested-price"
@@ -392,6 +489,7 @@ export default function NewListing() {
                       <div className={`h-4 w-4 rounded-sm border flex items-center justify-center ${selectedPlatforms.includes(p.id) ? "bg-primary border-primary" : "border-muted-foreground/40"}`}>
                         {selectedPlatforms.includes(p.id) && <Check className="h-3 w-3 text-white" />}
                       </div>
+                      <PlatformIcon name={p.id} />
                       <span className="text-sm font-medium">{p.label}</span>
                     </button>
                   ))}
@@ -403,12 +501,15 @@ export default function NewListing() {
             <Card>
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-semibold">Platform Descriptions</CardTitle>
+                  <div>
+                    <CardTitle className="text-sm font-semibold">Platform Descriptions</CardTitle>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">AI Quick Fill writes these automatically, or generate separately below</p>
+                  </div>
                   <Button
                     data-testid="button-generate-descriptions"
                     size="sm"
                     variant="outline"
-                    className="h-7 text-xs gap-1.5"
+                    className="h-7 text-xs gap-1.5 shrink-0"
                     onClick={handleGenerateDescriptions}
                     disabled={generateDesc.isPending}
                   >
@@ -421,14 +522,14 @@ export default function NewListing() {
                 {selectedPlatforms.includes("poshmark") && (
                   <div className="space-y-1">
                     <Label className="flex items-center gap-1.5 text-xs font-semibold">
-                      <span className="h-4 w-4 rounded bg-pink-600 text-white flex items-center justify-center text-[9px] font-bold">P</span>
+                      <PlatformIcon name="poshmark" />
                       Poshmark
                     </Label>
                     <Textarea
                       data-testid="textarea-poshmark-desc"
                       value={descriptions.poshmark}
                       onChange={(e) => setDescriptions((d) => ({ ...d, poshmark: e.target.value }))}
-                      placeholder="Click Generate to create a Poshmark description..."
+                      placeholder="Use AI Quick Fill above, or click Generate…"
                       rows={4}
                       className="text-xs"
                     />
@@ -444,7 +545,7 @@ export default function NewListing() {
                       data-testid="textarea-depop-desc"
                       value={descriptions.depop}
                       onChange={(e) => setDescriptions((d) => ({ ...d, depop: e.target.value }))}
-                      placeholder="Click Generate to create a Depop description..."
+                      placeholder="Use AI Quick Fill above, or click Generate…"
                       rows={4}
                       className="text-xs"
                     />
@@ -460,7 +561,7 @@ export default function NewListing() {
                       data-testid="textarea-mercari-desc"
                       value={descriptions.mercari}
                       onChange={(e) => setDescriptions((d) => ({ ...d, mercari: e.target.value }))}
-                      placeholder="Click Generate to create a Mercari description..."
+                      placeholder="Use AI Quick Fill above, or click Generate…"
                       rows={4}
                       className="text-xs"
                     />
