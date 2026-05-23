@@ -1,0 +1,515 @@
+AI-Powered Crosslisting & Reseller Operating System
+
+Feature + Market Research Document
+
+This document combines:
+
+* all the features you mentioned
+* competitor research
+* common reseller pain points
+* advanced features worth considering
+* a recommended MVP roadmap
+
+⸻
+
+Core Vision
+
+Build an AI-powered reseller operating system that:
+
+* stores inventory centrally
+* generates listings automatically
+* cross-posts to multiple platforms
+* syncs sold inventory
+* automates repetitive reseller tasks
+* uses AI to improve pricing, descriptions, and sales velocity
+
+Target platforms:
+
+* Depop
+* Mercari
+* Poshmark
+* potentially:
+    * eBay
+    * Facebook Marketplace
+    * Grailed
+    * Etsy
+    * Vinted
+
+⸻
+
+MASTER FEATURE LIST
+
+1. Inventory Management System
+
+Core Inventory Features
+
+* centralized inventory database
+* upload item once
+* multiple images per item
+* item status tracking
+* sold/archive system
+* inventory search
+* filters
+* tags
+* categories
+* size tracking
+* brand tracking
+* SKU generation
+* notes section
+* sourcing cost tracking
+* profit tracking
+
+Smart Inventory Features
+
+* duplicate item detection
+* stale inventory detection
+* relist recommendations
+* inventory aging
+* “likely to sell soon” prediction
+* AI categorization
+* smart tagging
+
+⸻
+
+2. AI Listing Intelligence
+
+AI Photo Understanding
+
+* identify item from photos
+* identify:
+    * brand
+    * category
+    * style
+    * color
+    * condition
+    * gender category
+    * size estimation
+    * material estimation
+
+AI Listing Generation
+
+* AI-generated titles
+* AI-generated descriptions
+* AI-generated hashtags
+* SEO optimization
+* marketplace-specific formatting
+* tone customization per platform
+
+Example:
+
+* casual Depop descriptions
+* SEO-heavy Poshmark descriptions
+* concise Mercari descriptions
+
+AI Pricing
+
+* sold comps lookup
+* average sold price
+* pricing recommendations
+* low/high price range
+* market demand estimation
+* suggested quick-sale pricing
+* suggested max-profit pricing
+
+⸻
+
+3. Image Processing
+
+Image Features
+
+* background removal
+* AI cleanup
+* auto-cropping
+* brightness correction
+* white background generation
+* marketplace image optimization
+* watermarking
+* image compression
+* duplicate image detection
+
+Advanced Image Features
+
+* AI mannequin generation
+* AI flat-lay enhancement
+* AI outfit generation
+* AI mockups
+* AI cover image selection
+
+⸻
+
+4. Crosslisting System
+
+Core Crosslisting
+
+* create listing once
+* post to multiple marketplaces
+* platform-specific formatting
+* auto field mapping
+* category conversion
+* pricing overrides per platform
+* title adaptation per platform
+
+Posting Features
+
+* one-click crosslisting
+* scheduled posting
+* draft mode
+* posting queue
+* bulk posting
+* retry failed listings
+
+⸻
+
+5. Auto Delisting / Inventory Syncing
+
+Sale Sync Features
+
+* detect sold listings
+* automatic delisting
+* inventory syncing
+* sale detection polling
+* email parsing for sales
+* relisting prevention
+
+Sync Features
+
+* mark sold everywhere
+* partial sync recovery
+* sync logs
+* sync status dashboard
+* duplicate sale prevention
+
+This is one of the MOST requested reseller features. Reddit users repeatedly complain about unreliable auto-delisting in existing tools.  
+
+⸻
+
+6. Poshmark Automation Features
+
+Sharing Automation
+
+* scheduled sharing
+* continuous sharing
+* smart sharing intervals
+* random human-like delays
+* party sharing
+* category-only sharing
+
+Competitor tools heavily emphasize automated sharing because it still impacts visibility.  
+
+Follow Automation
+
+* auto follow users
+* follow targeted closets
+* follow followers/following lists
+* follow new users
+* unfollow automation
+
+Existing tools like PosherVA already support this heavily.  
+
+Offer Automation
+
+* auto offers to likers
+* bulk offers
+* smart discount recommendations
+* closet clear out automation
+
+⸻
+
+7. Analytics Dashboard
+
+Sales Analytics
+
+* total sales
+* platform breakdown
+* profit analytics
+* average sell-through rate
+* category performance
+* best-performing brands
+* sell-through velocity
+
+AI Analytics
+
+* pricing success analysis
+* AI recommendations
+* stale inventory alerts
+* sourcing suggestions
+* demand prediction
+
+Some competitors market analytics heavily but users say existing dashboards are often weak.  
+
+⸻
+
+8. Automation Infrastructure
+
+Automation Features
+
+* browser automation
+* scheduled tasks
+* retry systems
+* anti-detection delays
+* captcha handling
+* session persistence
+* task queue system
+* automation logs
+
+Safety Features
+
+* throttle prevention
+* randomized timing
+* rate limiting
+* activity simulation
+* automation cooldowns
+
+Competitors specifically advertise:
+
+* human-like delays
+* captcha solving
+* throttle prevention  
+
+⸻
+
+9. Bulk Tools
+
+Bulk Operations
+
+* bulk relist
+* bulk delist
+* bulk repost
+* bulk edit pricing
+* bulk tag editing
+* bulk image edits
+* bulk offers
+* bulk crosslisting
+
+Bulk relisting/delisting is considered a premium feature in tools like Vendoo.  
+
+⸻
+
+10. Mobile-Friendly Workflow
+
+Mobile Features
+
+* mobile-first dashboard
+* photo upload from phone
+* camera integration
+* mobile notifications
+* quick listing mode
+* swipe inventory management
+
+Users complain many competitor mobile apps are poor or limited.  
+
+This is a HUGE opportunity.
+
+⸻
+
+11. AI Agent Features
+
+Intelligent Agents
+
+* pricing agent
+* listing optimization agent
+* trend analysis agent
+* relist recommendation agent
+* stale inventory agent
+* sourcing recommendation agent
+
+Future AI Ideas
+
+* “Whatnot compatibility score”
+* “viral/trending style detection”
+* “best platform prediction”
+* “optimal posting time”
+
+⸻
+
+COMPETITOR RESEARCH
+
+Existing Competitors
+
+Platform	Strengths	Weaknesses
+Vendoo￼	Crosslisting, imports, delisting	Users report sync reliability issues
+List Perfectly￼	Popular among resellers	UI/UX complaints
+PosherVA￼	Advanced Poshmark automation	Focused mostly on Poshmark
+Flyp￼	Free tools, crosslisting	Less automation
+Crosslist￼	Simpler workflow	Less AI-focused
+SellerAider￼	Better automation feedback from users	Smaller ecosystem
+
+⸻
+
+Biggest User Complaints About Existing Tools
+
+Based on Reddit/community feedback:
+
+Common Complaints
+
+* unreliable auto-delisting
+* poor mobile apps
+* outdated UI
+* too many add-on fees
+* weak AI features
+* inconsistent sync
+* requires desktop/browser open constantly
+* slow workflows
+* poor customer support
+* too much manual input still required
+
+⸻
+
+Biggest Opportunities
+
+1. AI-Native Workflow
+
+Most current tools were built BEFORE modern AI.
+
+Opportunity:
+
+* photo → fully generated listing
+* automatic pricing
+* automatic categorization
+* smart recommendations
+
+⸻
+
+2. Better Mobile Experience
+
+Most competitors are desktop-heavy.
+
+Opportunity:
+
+* mobile-first workflow
+* quick listing from phone
+* camera-first interface
+
+⸻
+
+3. Better Inventory Sync Reliability
+
+This is probably the SINGLE biggest pain point.
+
+Opportunity:
+
+* more reliable sale detection
+* better logging
+* sync recovery tools
+* visible sync statuses
+
+⸻
+
+4. Cleaner UX
+
+Most reseller software looks outdated.
+
+Opportunity:
+
+* modern dashboard
+* AI-assisted workflows
+* faster listing flow
+* less clutter
+
+⸻
+
+RECOMMENDED MVP
+
+Phase 1 — MVP
+
+Build First
+
+* inventory dashboard
+* image uploads
+* AI descriptions
+* AI pricing suggestions
+* sold comps lookup
+* master listing system
+* manual crosslisting helper
+* status tracking
+
+Skip Initially
+
+* auto sharing
+* auto following
+* advanced automation
+* captcha handling
+
+⸻
+
+Phase 2
+
+Add
+
+* browser automation
+* one-click posting
+* auto-delisting
+* sale syncing
+* relisting tools
+
+⸻
+
+Phase 3
+
+Add Advanced Features
+
+* Poshmark automation
+* analytics
+* AI recommendations
+* advanced pricing intelligence
+* sourcing intelligence
+* AI trend analysis
+
+⸻
+
+RECOMMENDED TECH STACK
+
+Dashboard/App
+
+* Base44￼
+    or
+* Lovable￼
+
+Database
+
+* Supabase￼
+
+AI
+
+* OpenAI Platform￼
+
+Automation
+
+* Playwright￼
+* Browser Use￼
+
+Workflows
+
+* n8n￼
+
+Image Processing
+
+* PhotoRoom API￼
+    or
+* remove.bg API￼
+
+⸻
+
+FINAL STRATEGIC TAKEAWAY
+
+The strongest long-term differentiator is probably NOT:
+
+* automation
+* posting
+* crosslisting
+
+Those can be copied.
+
+The strongest differentiator is likely:
+
+AI-assisted listing intelligence
+
+Specifically:
+
+* understanding items from photos
+* generating optimized listings
+* smart pricing
+* predicting marketplace success
+* simplifying reseller workflows dramatically
+
+That’s where current reseller tools still feel behind.

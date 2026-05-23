@@ -1,22 +1,28 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: CrossList Dashboard API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: listings
+    description: Listing management
+  - name: images
+    description: Image processing
+  - name: platforms
+    description: Platform connections
+  - name: ai
+    description: AI-powered features
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +30,249 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /listings:
+    get:
+      operationId: listListings
+      tags: [listings]
+      summary: List all listings
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, published, sold, archived]
+        - name: platform
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of listings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Listing"
+    post:
+      operationId: createListing
+      tags: [listings]
+      summary: Create a new listing
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListingInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+
+  /listings/stats:
+    get:
+      operationId: getListingStats
+      tags: [listings]
+      summary: Get listing stats summary
+      responses:
+        "200":
+          description: Stats summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListingStats"
+
+  /listings/{id}:
+    get:
+      operationId: getListing
+      tags: [listings]
+      summary: Get a listing by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateListing
+      tags: [listings]
+      summary: Update a listing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ListingUpdate"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+    delete:
+      operationId: deleteListing
+      tags: [listings]
+      summary: Delete a listing
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /listings/{id}/publish:
+    post:
+      operationId: publishListing
+      tags: [listings]
+      summary: Publish listing to selected platforms
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublishRequest"
+      responses:
+        "200":
+          description: Publish results per platform
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublishResult"
+
+  /listings/{id}/mark-sold:
+    post:
+      operationId: markListingSold
+      tags: [listings]
+      summary: Mark a listing as sold
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkSoldInput"
+      responses:
+        "200":
+          description: Updated listing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Listing"
+
+  /images/remove-bg:
+    post:
+      operationId: removeBackground
+      tags: [images]
+      summary: Remove background from an image (base64 input)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RemoveBgInput"
+      responses:
+        "200":
+          description: Image with background removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoveBgResult"
+
+  /sold-prices:
+    get:
+      operationId: getSoldPrices
+      tags: [listings]
+      summary: Look up recent sold prices for an item
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+        - name: condition
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Recent sold price data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SoldPriceData"
+
+  /ai/generate-description:
+    post:
+      operationId: generateDescription
+      tags: [ai]
+      summary: Generate platform-specific listing descriptions
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateDescriptionInput"
+      responses:
+        "200":
+          description: Generated descriptions for each platform
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedDescriptions"
+
+  /platforms:
+    get:
+      operationId: listPlatforms
+      tags: [platforms]
+      summary: List all platforms and their connection status
+      responses:
+        "200":
+          description: Platforms list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Platform"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +280,286 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    Listing:
+      type: object
+      required: [id, title, price, status, createdAt]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        price:
+          type: number
+        originalPrice:
+          type: ["number", "null"]
+        category:
+          type: ["string", "null"]
+        brand:
+          type: ["string", "null"]
+        size:
+          type: ["string", "null"]
+        condition:
+          type: string
+          enum: [new_with_tags, new_without_tags, excellent, good, fair]
+        status:
+          type: string
+          enum: [draft, published, sold, archived]
+        platforms:
+          type: array
+          items:
+            type: string
+        imageUrls:
+          type: array
+          items:
+            type: string
+        poshmarkDescription:
+          type: ["string", "null"]
+        depopDescription:
+          type: ["string", "null"]
+        mercariDescription:
+          type: ["string", "null"]
+        soldPrice:
+          type: ["number", "null"]
+        soldAt:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+
+    ListingInput:
+      type: object
+      required: [title, price, condition]
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        originalPrice:
+          type: number
+        category:
+          type: string
+        brand:
+          type: string
+        size:
+          type: string
+        condition:
+          type: string
+          enum: [new_with_tags, new_without_tags, excellent, good, fair]
+        platforms:
+          type: array
+          items:
+            type: string
+        imageUrls:
+          type: array
+          items:
+            type: string
+
+    ListingUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        originalPrice:
+          type: number
+        category:
+          type: string
+        brand:
+          type: string
+        size:
+          type: string
+        condition:
+          type: string
+          enum: [new_with_tags, new_without_tags, excellent, good, fair]
+        status:
+          type: string
+          enum: [draft, published, sold, archived]
+        platforms:
+          type: array
+          items:
+            type: string
+        imageUrls:
+          type: array
+          items:
+            type: string
+        poshmarkDescription:
+          type: string
+        depopDescription:
+          type: string
+        mercariDescription:
+          type: string
+
+    ListingStats:
+      type: object
+      required: [total, draft, published, sold, archived, totalRevenue, avgPrice, recentActivity]
+      properties:
+        total:
+          type: integer
+        draft:
+          type: integer
+        published:
+          type: integer
+        sold:
+          type: integer
+        archived:
+          type: integer
+        totalRevenue:
+          type: number
+        avgPrice:
+          type: number
+        recentActivity:
+          type: array
+          items:
+            $ref: "#/components/schemas/Listing"
+
+    PublishRequest:
+      type: object
+      required: [platforms]
+      properties:
+        platforms:
+          type: array
+          items:
+            type: string
+            enum: [poshmark, depop, mercari]
+
+    PublishResult:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlatformPublishResult"
+
+    PlatformPublishResult:
+      type: object
+      required: [platform, success]
+      properties:
+        platform:
+          type: string
+        success:
+          type: boolean
+        url:
+          type: ["string", "null"]
+        error:
+          type: ["string", "null"]
+
+    MarkSoldInput:
+      type: object
+      required: [soldPrice]
+      properties:
+        soldPrice:
+          type: number
+
+    RemoveBgInput:
+      type: object
+      required: [imageBase64]
+      properties:
+        imageBase64:
+          type: string
+        filename:
+          type: string
+
+    RemoveBgResult:
+      type: object
+      required: [imageBase64, filename]
+      properties:
+        imageBase64:
+          type: string
+        filename:
+          type: string
+
+    SoldPriceData:
+      type: object
+      required: [query, avgPrice, minPrice, maxPrice, sampleCount, items]
+      properties:
+        query:
+          type: string
+        avgPrice:
+          type: number
+        minPrice:
+          type: number
+        maxPrice:
+          type: number
+        sampleCount:
+          type: integer
+        suggestedPrice:
+          type: number
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/SoldItem"
+
+    SoldItem:
+      type: object
+      required: [title, price, platform, soldDate]
+      properties:
+        title:
+          type: string
+        price:
+          type: number
+        platform:
+          type: string
+        soldDate:
+          type: string
+        condition:
+          type: ["string", "null"]
+
+    GenerateDescriptionInput:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+        category:
+          type: string
+        brand:
+          type: string
+        size:
+          type: string
+        condition:
+          type: string
+        notes:
+          type: string
+        platforms:
+          type: array
+          items:
+            type: string
+            enum: [poshmark, depop, mercari]
+
+    GeneratedDescriptions:
+      type: object
+      properties:
+        poshmark:
+          type: ["string", "null"]
+        depop:
+          type: ["string", "null"]
+        mercari:
+          type: ["string", "null"]
+
+    Platform:
+      type: object
+      required: [name, displayName, connected, color]
+      properties:
+        name:
+          type: string
+        displayName:
+          type: string
+        connected:
+          type: boolean
+        color:
+          type: string
+        username:
+          type: ["string", "null"]
+        listingCount:
+          type: ["integer", "null"]
