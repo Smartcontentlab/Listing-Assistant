@@ -134,16 +134,28 @@ export default function NewListing() {
   }
 
   async function handleQuickFill() {
-    if (!quickFillText.trim()) {
-      toast({ title: "Describe your item first", variant: "destructive" });
+    const hasImages = images.some((im) => im.processedBase64 || im.originalBase64);
+    if (!quickFillText.trim() && !hasImages) {
+      toast({ title: "Add a description or upload photos first", variant: "destructive" });
       return;
     }
     setQuickFillLoading(true);
     try {
+      // Collect processed (or original) base64 images
+      const imagePayload = images
+        .filter((im) => !im.processing)
+        .map((im) => {
+          const b64 = im.processedBase64 ?? im.originalBase64;
+          return b64.startsWith("data:") ? b64 : `data:image/jpeg;base64,${b64}`;
+        });
+
       const resp = await fetch("/api/ai/quick-fill", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rawText: quickFillText }),
+        body: JSON.stringify({
+          rawText: quickFillText || " ",
+          images: imagePayload,
+        }),
       });
       if (!resp.ok) throw new Error("AI request failed");
       const data = await resp.json();
@@ -162,7 +174,10 @@ export default function NewListing() {
         mercari: data.mercariDescription ?? "",
       });
 
-      toast({ title: "Form filled!", description: "Review the details and make any tweaks." });
+      const visionMsg = data._usedVision
+        ? "Photos analyzed for flaws and details."
+        : "Review the details and make any tweaks.";
+      toast({ title: "Form filled!", description: visionMsg });
     } catch (err) {
       toast({ title: "Quick Fill failed", description: "Try again or fill in manually.", variant: "destructive" });
     } finally {
@@ -237,13 +252,19 @@ export default function NewListing() {
                 <div>
                   <p className="text-sm font-semibold">AI Quick Fill</p>
                   <p className="text-xs text-muted-foreground">
-                    Describe your item in plain text — AI will fill the entire form and write all platform descriptions at once.
+                    {images.filter((im) => !im.processing).length > 0
+                      ? `${images.filter((im) => !im.processing).length} photo${images.filter((im) => !im.processing).length > 1 ? "s" : ""} uploaded — AI will scan them for brand, condition, and any flaws. Add a note below or leave blank.`
+                      : "Describe your item in plain text — AI fills the entire form and writes all 3 platform descriptions at once. Or upload photos above first for even better results."}
                   </p>
                 </div>
                 <Textarea
                   value={quickFillText}
                   onChange={(e) => setQuickFillText(e.target.value)}
-                  placeholder={`e.g. "Levi's 501 jeans size 32x30, excellent condition, some light fading, I paid $15 at a thrift store"`}
+                  placeholder={
+                    images.filter((im) => !im.processing).length > 0
+                      ? `Optional: add any extra notes (e.g. "size M, I paid $8, has a small pen mark on sleeve")`
+                      : `e.g. "Levi's 501 jeans size 32x30, excellent condition, some light fading, I paid $15 at a thrift store"`
+                  }
                   rows={2}
                   className="text-xs bg-background"
                 />
@@ -254,9 +275,9 @@ export default function NewListing() {
                   disabled={quickFillLoading}
                 >
                   {quickFillLoading ? (
-                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Filling form…</>
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> {images.filter(im => !im.processing).length > 0 ? "Analyzing photos…" : "Filling form…"}</>
                   ) : (
-                    <><Sparkles className="h-3.5 w-3.5" /> Fill Entire Form with AI</>
+                    <><Sparkles className="h-3.5 w-3.5" /> {images.filter(im => !im.processing).length > 0 ? "Analyze Photos + Fill Form" : "Fill Entire Form with AI"}</>
                   )}
                 </Button>
               </div>

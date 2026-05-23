@@ -118,13 +118,19 @@ function buildFallback(
 
 // POST /ai/quick-fill
 router.post("/ai/quick-fill", async (req, res) => {
-  const { rawText } = req.body ?? {};
+  const { rawText, images } = req.body ?? {};
   if (!rawText || typeof rawText !== "string") {
     return res.status(400).json({ error: "rawText is required" });
   }
 
-  const systemPrompt = `You are an expert reseller assistant. The user will describe a clothing/fashion item in rough natural language.
-Your job is to extract structured listing fields AND write platform-specific descriptions.
+  const hasImages = Array.isArray(images) && images.length > 0;
+
+  const systemPrompt = `You are an expert reseller assistant helping list secondhand fashion items.
+${hasImages ? "The user has provided photos of the item. Carefully examine each image for: brand labels/tags, size labels, visible flaws (stains, pilling, holes, fading, wear), fabric/material, color, style, and overall condition." : ""}
+The user will also provide a rough natural-language description of the item.
+
+Your job: extract structured listing fields AND write platform-specific descriptions.
+${hasImages ? "If you spot any flaws or notable details in the images, include them in the 'notes' field and mention them appropriately in descriptions (honestly but without over-emphasizing minor flaws)." : ""}
 
 Return ONLY a valid JSON object with these exact fields (all strings, no nulls):
 {
@@ -135,28 +141,48 @@ Return ONLY a valid JSON object with these exact fields (all strings, no nulls):
   "condition": "one of: new_with_tags, new_without_tags, excellent, good, fair",
   "price": "suggested selling price as a number string (e.g. '45')",
   "originalPrice": "original retail price as number string, or empty string",
-  "notes": "any extra details like measurements, flaws, or sourcing notes",
-  "poshmarkDescription": "full Poshmark listing description (friendly, enthusiastic, under 200 words, mention brand/size/condition, say open to offers)",
-  "depopDescription": "full Depop listing description (casual, Gen-Z, with hashtags at end, under 120 words)",
-  "mercariDescription": "full Mercari listing description (factual, straightforward, under 150 words)"
+  "notes": "measurements, visible flaws from photos, sourcing notes, or other important details",
+  "poshmarkDescription": "full Poshmark listing description (friendly, enthusiastic, under 200 words, mention brand/size/condition, note any flaws honestly, say open to offers)",
+  "depopDescription": "full Depop listing description (casual, Gen-Z tone, with relevant hashtags at end, under 120 words)",
+  "mercariDescription": "full Mercari listing description (factual, clear, mention condition and any flaws, under 150 words)"
 }`;
 
   try {
+    // Build user message content — text + optional images
+    type ContentPart =
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string; detail: "low" | "high" | "auto" } };
+
+    const userContent: ContentPart[] = [{ type: "text", text: rawText || "(no description provided, use images only)" }];
+
+    if (hasImages) {
+      // Include up to 4 images to avoid token overuse
+      for (const imgBase64 of (images as string[]).slice(0, 4)) {
+        const dataUrl = imgBase64.startsWith("data:") ? imgBase64 : `data:image/jpeg;base64,${imgBase64}`;
+        userContent.push({
+          type: "image_url",
+          image_url: { url: dataUrl, detail: "low" },
+        });
+      }
+    }
+
+    const model = hasImages ? "gpt-4o" : "gpt-4o-mini";
+
     const response = await openai.chat.completions.create({
-      model: "gpt-5-mini",
-      max_completion_tokens: 1024,
+      model,
+      max_tokens: 1200,
       messages: [
         { role: "system", content: systemPrompt },
-        { role: "user", content: rawText },
+        { role: "user", content: userContent },
       ],
-    });
+    } as any);
 
     const text = response.choices[0]?.message?.content ?? "{}";
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON found in response");
 
     const parsed = JSON.parse(jsonMatch[0]);
-    return res.json(parsed);
+    return res.json({ ...parsed, _usedVision: hasImages });
   } catch (err) {
     return res.status(500).json({ error: "AI quick fill failed", details: String(err) });
   }
