@@ -116,6 +116,46 @@ function buildFallback(
     .join("\n");
 }
 
+// POST /ai/scan-item — thrift scanner, returns buy/pass signal
+router.post("/ai/scan-item", async (req, res) => {
+  const { imageBase64 } = req.body ?? {};
+  if (!imageBase64) return res.status(400).json({ error: "imageBase64 required" });
+
+  const dataUrl = imageBase64.startsWith("data:") ? imageBase64 : `data:image/jpeg;base64,${imageBase64}`;
+
+  const systemPrompt = `You are an expert thrift store reseller. You are shown a photo of an item and must decide if it's worth buying to resell.
+
+Evaluate: brand recognition, condition, demand on Depop/Poshmark/Mercari, typical resale value vs thrift store cost.
+
+Return ONLY valid JSON:
+{
+  "signal": "buy" or "pass",
+  "item": "brief item identification (brand + type)",
+  "reason": "1-2 sentence plain English explanation of why to buy or pass",
+  "avgPrice": estimated average resale price as a number (e.g. 45),
+  "recentSales": estimated number of similar recent sales as a number (e.g. 12)
+}
+
+Be decisive. If it's a known brand in good condition with solid demand, say buy. If it's generic or worn out, say pass.`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      max_tokens: 300,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: [{ type: "image_url", image_url: { url: dataUrl, detail: "low" } }] as any },
+      ],
+    } as any);
+    const text = response.choices[0]?.message?.content ?? "{}";
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) throw new Error("No JSON");
+    return res.json(JSON.parse(match[0]));
+  } catch (err) {
+    return res.status(500).json({ error: "Scan failed", details: String(err) });
+  }
+});
+
 // POST /ai/quick-fill
 router.post("/ai/quick-fill", async (req, res) => {
   const { rawText, images } = req.body ?? {};
@@ -125,26 +165,51 @@ router.post("/ai/quick-fill", async (req, res) => {
 
   const hasImages = Array.isArray(images) && images.length > 0;
 
-  const systemPrompt = `You are an expert reseller assistant helping list secondhand fashion items.
-${hasImages ? "The user has provided photos of the item. Carefully examine each image for: brand labels/tags, size labels, visible flaws (stains, pilling, holes, fading, wear), fabric/material, color, style, and overall condition." : ""}
-The user will also provide a rough natural-language description of the item.
+  const systemPrompt = `You are an expert reseller assistant helping list secondhand fashion items across Poshmark, Depop, and Mercari.
+${hasImages ? "The user has provided photos. Carefully examine each for: brand labels/tags, size tags, visible flaws (stains, pilling, holes, fading, discoloration, missing buttons, wear patterns), fabric/material, color, and overall condition." : ""}
 
-Your job: extract structured listing fields AND write platform-specific descriptions.
-${hasImages ? "If you spot any flaws or notable details in the images, include them in the 'notes' field and mention them appropriately in descriptions (honestly but without over-emphasizing minor flaws)." : ""}
+Your job: extract structured listing fields AND write deeply platform-optimized descriptions. Each platform has a different culture, algorithm, and buyer — the descriptions MUST feel completely different.
 
-Return ONLY a valid JSON object with these exact fields (all strings, no nulls):
+POSHMARK description rules:
+- SEO-heavy: stuff keywords naturally (brand, style name, color, size, season, aesthetic keywords like "cottagecore", "Y2K", "old money", "streetwear")
+- Friendly, enthusiastic seller voice — like a friend selling to you
+- Mention: brand, size, measurements if possible, condition, color, any flaws honestly
+- Always end with: "Open to offers! Bundle 2+ items for a discount 💕 Fast shipping from a smoke-free home."
+- Format with line breaks for readability
+- 150-220 words
+
+DEPOP description rules:
+- Casual, Gen-Z / millennial reseller tone — short punchy sentences
+- Lead with the vibe/aesthetic first (e.g. "pure 90s energy 🔥" or "perfect vintage find")
+- Mention brand, size, condition in a conversational way
+- NO corporate language — write like you're texting a friend
+- End with 8-12 relevant hashtags: mix brand + aesthetic + category + era (e.g. #vintage #levi501 #y2kdenim #thrifted #denimjeans #90sfashion)
+- 80-120 words total including hashtags
+
+MERCARI description rules:
+- Factual, buyer-reassurance focused — Mercari buyers want specifics
+- Lead with brand and item type
+- Include: exact measurements if inferable, color, condition with specific details, any flaws with precise location ("small 1cm mark on left sleeve")
+- Mention: "Ships within 1 business day", "Comes from a clean, smoke-free home"
+- NO hashtags, NO overly casual language
+- Bullet-point style or short paragraphs
+- 100-160 words
+
+${hasImages ? "Note any visible flaws in the 'notes' field and reference them honestly (but briefly) in all descriptions." : ""}
+
+Return ONLY a valid JSON object:
 {
-  "title": "short compelling listing title (max 60 chars)",
+  "title": "compelling title under 60 chars — lead with brand if known",
   "brand": "brand name or empty string",
   "category": "one of: tops, bottoms, dresses, outerwear, shoes, bags, accessories, activewear, swimwear, other",
   "size": "size or empty string",
   "condition": "one of: new_with_tags, new_without_tags, excellent, good, fair",
-  "price": "suggested selling price as a number string (e.g. '45')",
-  "originalPrice": "original retail price as number string, or empty string",
-  "notes": "measurements, visible flaws from photos, sourcing notes, or other important details",
-  "poshmarkDescription": "full Poshmark listing description (friendly, enthusiastic, under 200 words, mention brand/size/condition, note any flaws honestly, say open to offers)",
-  "depopDescription": "full Depop listing description (casual, Gen-Z tone, with relevant hashtags at end, under 120 words)",
-  "mercariDescription": "full Mercari listing description (factual, clear, mention condition and any flaws, under 150 words)"
+  "price": "suggested resale price as number string based on brand and condition",
+  "originalPrice": "original retail price if known, else empty string",
+  "notes": "measurements, specific flaws seen in photos, color, material details",
+  "poshmarkDescription": "full SEO-heavy Poshmark description per rules above",
+  "depopDescription": "full casual Depop description with hashtags per rules above",
+  "mercariDescription": "full factual Mercari description per rules above"
 }`;
 
   try {

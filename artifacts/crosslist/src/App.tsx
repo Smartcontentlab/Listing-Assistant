@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, List, PlusCircle, Search, Globe } from "lucide-react";
+import { LayoutDashboard, List, PlusCircle, Search, Globe, Camera, PackageCheck } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
@@ -21,6 +21,9 @@ import NewListing from "@/pages/NewListing";
 import PriceResearch from "@/pages/PriceResearch";
 import Platforms from "@/pages/Platforms";
 import ListingDetail from "@/pages/ListingDetail";
+import Scanner from "@/pages/Scanner";
+import SoldTracker from "@/pages/SoldTracker";
+import ListingWizard from "@/components/ListingWizard";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +31,8 @@ const navigation = [
   { name: "Dashboard", href: "/", icon: LayoutDashboard, exact: true },
   { name: "Listings", href: "/listings", icon: List, exact: false },
   { name: "New Listing", href: "/listings/new", icon: PlusCircle, exact: true },
+  { name: "Sold Tracker", href: "/sold", icon: PackageCheck, exact: false },
+  { name: "Thrift Scanner", href: "/scanner", icon: Camera, exact: false },
   { name: "Price Research", href: "/price-research", icon: Search, exact: false },
   { name: "Platforms", href: "/platforms", icon: Globe, exact: false },
 ];
@@ -37,7 +42,7 @@ function AppLayout({ children }: { children: React.ReactNode }) {
 
   function isActive(item: (typeof navigation)[0]) {
     if (item.exact) return location === item.href;
-    if (item.href === "/listings") return location.startsWith("/listings") && location !== "/listings/new";
+    if (item.href === "/listings") return location.startsWith("/listings") && location !== "/listings/new" && !location.startsWith("/listings/wizard");
     return location.startsWith(item.href);
   }
 
@@ -88,9 +93,11 @@ function Router() {
     <AppLayout>
       <Switch>
         <Route path="/" component={Dashboard} />
-        <Route path="/listings/new" component={NewListing} />
+        <Route path="/listings/new" component={ListingWizard} />
         <Route path="/listings/:id" component={ListingDetail} />
         <Route path="/listings" component={Listings} />
+        <Route path="/sold" component={SoldTracker} />
+        <Route path="/scanner" component={Scanner} />
         <Route path="/price-research" component={PriceResearch} />
         <Route path="/platforms" component={Platforms} />
         <Route component={NotFound} />
