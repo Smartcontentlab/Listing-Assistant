@@ -22,6 +22,7 @@ import {
   followCommunity,
   dailyRelist,
 } from "./poshmark-activity.js";
+import { detectSales } from "./sales-detector.js";
 import { hasSession } from "./browser.js";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -31,7 +32,8 @@ export type FeatureKey =
   | "follow_back"
   | "share_back"
   | "community_follow"
-  | "daily_relist";
+  | "daily_relist"
+  | "sales_detection";
 
 interface ScheduledTask {
   feature: FeatureKey;
@@ -100,10 +102,22 @@ const tasks: Record<FeatureKey, ScheduledTask> = {
   daily_relist: {
     feature: "daily_relist",
     label: "Daily Relist",
-    minIntervalMs: 23 * 60 * 60 * 1000, // ~once a day
+    minIntervalMs: 23 * 60 * 60 * 1000,
     maxIntervalMs: 25 * 60 * 60 * 1000,
     activeHoursStart: 9,
     activeHoursEnd: 11,
+    timer: null,
+    running: false,
+    lastRunAt: null,
+    nextRunAt: null,
+  },
+  sales_detection: {
+    feature: "sales_detection",
+    label: "Sales Detection",
+    minIntervalMs: 15 * 60 * 1000,  // every 15 min
+    maxIntervalMs: 25 * 60 * 1000,  // every 25 min
+    activeHoursStart: 0,             // runs 24/7
+    activeHoursEnd: 24,
     timer: null,
     running: false,
     lastRunAt: null,
@@ -144,12 +158,14 @@ async function runTask(task: ScheduledTask) {
     return;
   }
 
-  // Check session
-  const sessionOk = await hasSession("poshmark");
-  if (!sessionOk) {
-    await logRun(task.feature, task.label, "error", "No Poshmark session — connect your account in Platforms.", 0);
-    scheduleNext(task);
-    return;
+  // Sales detection checks all connected platforms — skip the poshmark-only session gate
+  if (task.feature !== "sales_detection") {
+    const sessionOk = await hasSession("poshmark");
+    if (!sessionOk) {
+      await logRun(task.feature, task.label, "error", "No Poshmark session — connect your account in Platforms.", 0);
+      scheduleNext(task);
+      return;
+    }
   }
 
   task.running = true;
@@ -188,6 +204,14 @@ async function runTask(task: ScheduledTask) {
           result.errors.length ? result.errors[0] : `Relisted ${(result as any).relisted} items`,
           (result as any).relisted);
         break;
+      case "sales_detection": {
+        const sr = await detectSales();
+        const msg = sr.matched > 0
+          ? `Found ${sr.matched} new sale${sr.matched > 1 ? "s" : ""} — inventory updated, delisting reminders queued`
+          : `Checked all platforms — no new sales`;
+        await logRun(task.feature, task.label, sr.errors.length && sr.matched === 0 ? "error" : "ok", msg, sr.matched);
+        break;
+      }
     }
   } catch (err) {
     await logRun(task.feature, task.label, "error", String(err), 0);

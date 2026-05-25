@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import {
-  Share2, Users, Heart, RefreshCw, Repeat2,
+  Share2, Users, Heart, RefreshCw, Repeat2, Zap,
   Clock, CheckCircle2, XCircle, Loader2, Play, Info, Shield
 } from "lucide-react";
 
@@ -28,7 +28,16 @@ interface AutomationLog {
   createdAt: string;
 }
 
-const FEATURES: { key: FeatureKey; label: string; description: string; icon: React.ElementType; schedule: string; platform: string }[] = [
+const FEATURES: { key: FeatureKey; label: string; description: string; icon: React.ElementType; schedule: string; platform: string; highlight?: boolean }[] = [
+  {
+    key: "sales_detection",
+    label: "Sales Detection",
+    description: "Checks your Poshmark, Depop, and Mercari sold orders every 15–25 minutes. When a sale is found, CrossList automatically marks the item sold in your inventory, queues shipping tasks, and alerts you to delist from other platforms.",
+    icon: Zap,
+    schedule: "Every 15–25 min · 24/7",
+    platform: "All Platforms",
+    highlight: true,
+  },
   {
     key: "share_closet",
     label: "Share Closet",
@@ -172,7 +181,7 @@ export default function Automation() {
           const isRunning = s?.running ?? false;
 
           return (
-            <Card key={feature.key} className={isEnabled ? "border-primary/20 bg-primary/2" : ""}>
+            <Card key={feature.key} className={isEnabled ? "border-primary/20 bg-primary/2" : feature.highlight ? "border-violet-200 dark:border-violet-800" : ""}>
               <CardContent className="pt-5">
                 <div className="flex items-start gap-4">
                   {/* Icon */}
