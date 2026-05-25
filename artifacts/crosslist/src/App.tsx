@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sidebar";
 import { LayoutDashboard, List, PlusCircle, Search, Globe, Camera, PackageCheck } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { NotificationBell } from "@/components/NotificationBell";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import Listings from "@/pages/Listings";
@@ -78,6 +79,10 @@ function AppLayout({ children }: { children: React.ReactNode }) {
               ))}
             </SidebarMenu>
           </SidebarContent>
+          <div className="mt-auto px-3 pb-3 border-t border-border pt-3 flex items-center justify-between">
+            <span className="text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">Activity</span>
+            <NotificationBell />
+          </div>
           <SidebarRail />
         </Sidebar>
         <main className="flex-1 flex flex-col overflow-hidden">
