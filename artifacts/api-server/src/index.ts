@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { initScheduler } from "./automation/scheduler";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,7 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Start Poshmark automation scheduler (restores enabled features from DB)
+  initScheduler().catch((e) => logger.warn({ err: e }, "Scheduler init failed"));
 });

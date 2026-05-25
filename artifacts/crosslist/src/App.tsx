@@ -12,7 +12,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, List, PlusCircle, Search, Globe, Camera, PackageCheck } from "lucide-react";
+import { LayoutDashboard, List, PlusCircle, Search, Globe, Camera, PackageCheck, Zap } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import { NotificationBell } from "@/components/NotificationBell";
 import NotFound from "@/pages/not-found";
@@ -25,6 +25,7 @@ import ListingDetail from "@/pages/ListingDetail";
 import Scanner from "@/pages/Scanner";
 import SoldTracker from "@/pages/SoldTracker";
 import ListingWizard from "@/components/ListingWizard";
+import Automation from "@/pages/Automation";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const navigation = [
   { name: "Thrift Scanner", href: "/scanner", icon: Camera, exact: false },
   { name: "Price Research", href: "/price-research", icon: Search, exact: false },
   { name: "Platforms", href: "/platforms", icon: Globe, exact: false },
+  { name: "Automation", href: "/automation", icon: Zap, exact: false },
 ];
 
 function AppLayout({ children }: { children: React.ReactNode }) {
@@ -105,6 +107,7 @@ function Router() {
         <Route path="/scanner" component={Scanner} />
         <Route path="/price-research" component={PriceResearch} />
         <Route path="/platforms" component={Platforms} />
+        <Route path="/automation" component={Automation} />
         <Route component={NotFound} />
       </Switch>
     </AppLayout>

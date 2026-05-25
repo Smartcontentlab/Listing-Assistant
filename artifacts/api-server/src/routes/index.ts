@@ -7,6 +7,7 @@ import aiRouter from "./ai";
 import imagesRouter from "./images";
 import activityRouter from "./activity";
 import automationRouter from "./automation";
+import automationActivityRouter from "./automation-activity";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(aiRouter);
 router.use(imagesRouter);
 router.use(activityRouter);
 router.use(automationRouter);
+router.use(automationActivityRouter);
 
 export default router;
