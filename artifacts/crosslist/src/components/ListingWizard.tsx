@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { ImagePlus, X, Loader2, Sparkles, Check, ArrowRight, ChevronRight, TrendingUp, Edit3 } from "lucide-react";
+import { ImagePlus, X, Loader2, Sparkles, Check, ArrowRight, ChevronRight, TrendingUp, Edit3, CheckCircle2, XCircle, AlertCircle } from "lucide-react";
 import { PlatformIcon } from "@/components/PlatformIcon";
 
 const CONDITIONS = [
@@ -80,6 +80,11 @@ export default function ListingWizard() {
   // Price confirm dialog
   const [priceData, setPriceData] = useState<{ min: number; avg: number; max: number; suggested: number; items: any[] } | null>(null);
   const [showPriceDialog, setShowPriceDialog] = useState(false);
+
+  // Publishing progress dialog
+  const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [publishingListingId, setPublishingListingId] = useState<number | null>(null);
+  const [publishResults, setPublishResults] = useState<Record<string, { success: boolean; url?: string; error?: string; pending?: boolean }>>({});
 
   const [listing, setListing] = useState<ListingData>({
     title: "", brand: "", size: "", category: "", condition: "good",
@@ -226,10 +231,48 @@ export default function ListingWizard() {
         mercariDescription: listing.mercariDescription || undefined,
       },
     });
+
     queryClient.invalidateQueries({ queryKey: getListListingsQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetListingStatsQueryKey() });
-    toast({ title: status === "draft" ? "Saved as draft" : "Listing published!", description: listing.title });
-    setLocation(`/listings/${created.id}`);
+
+    if (status === "draft") {
+      toast({ title: "Saved as draft", description: listing.title });
+      setLocation(`/listings/${created.id}`);
+      return;
+    }
+
+    // Trigger browser automation — show live progress dialog
+    const platforms = listing.selectedPlatforms;
+    const initialResults: Record<string, { success: boolean; url?: string; error?: string; pending?: boolean }> = {};
+    platforms.forEach((p) => { initialResults[p] = { success: false, pending: true }; });
+    setPublishResults(initialResults);
+    setPublishingListingId(created.id);
+    setShowPublishDialog(true);
+
+    try {
+      const resp = await fetch(`/api/automation/post/${created.id}`, { method: "POST" });
+      const data = await resp.json();
+      if (data.results) {
+        // Mark each platform done
+        const final: typeof initialResults = {};
+        platforms.forEach((p) => {
+          final[p] = data.results[p] ?? { success: false, error: "No response" };
+        });
+        setPublishResults(final);
+      } else {
+        // Automation not connected — show friendly message
+        platforms.forEach((p) => { initialResults[p] = { success: false, pending: false, error: "Connect your account in Platforms to enable auto-posting." }; });
+        setPublishResults({ ...initialResults });
+      }
+    } catch {
+      platforms.forEach((p) => { initialResults[p] = { success: false, pending: false, error: "Auto-post failed. Listing saved — post manually." }; });
+      setPublishResults({ ...initialResults });
+    }
+  }
+
+  function handlePublishDialogClose() {
+    setShowPublishDialog(false);
+    if (publishingListingId) setLocation(`/listings/${publishingListingId}`);
   }
 
   const readyImages = images.filter((im) => !im.processing);
@@ -451,6 +494,69 @@ export default function ListingWizard() {
             </Button>
             <Button className="flex-1 gap-1.5" onClick={acceptIdentify}>
               <Check className="h-3.5 w-3.5" />Yes, Looks Right
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIALOG: Publishing Progress */}
+      <Dialog open={showPublishDialog} onOpenChange={() => {}}>
+        <DialogContent className="max-w-sm" onInteractOutside={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Publishing Your Listing
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              CrossList is opening a browser and posting to each platform. This may take 30–90 seconds per platform.
+            </p>
+            <div className="space-y-2">
+              {Object.entries(publishResults).map(([platform, result]) => (
+                <div key={platform} className={`flex items-center gap-3 p-3 rounded-lg border ${result.pending ? "border-border bg-muted/30" : result.success ? "border-emerald-200 bg-emerald-50 dark:bg-emerald-950/20" : "border-red-200 bg-red-50 dark:bg-red-950/20"}`}>
+                  <PlatformIcon name={platform} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium capitalize">{platform}</p>
+                    {!result.pending && result.error && (
+                      <p className="text-[11px] text-muted-foreground truncate">{result.error}</p>
+                    )}
+                    {!result.pending && result.success && result.url && (
+                      <a href={result.url} target="_blank" rel="noreferrer" className="text-[11px] text-emerald-600 underline truncate block">View listing ↗</a>
+                    )}
+                    {result.pending && (
+                      <p className="text-[11px] text-muted-foreground">Posting…</p>
+                    )}
+                  </div>
+                  <div className="shrink-0">
+                    {result.pending ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                    ) : result.success ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    ) : (
+                      <AlertCircle className="h-4 w-4 text-amber-500" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {Object.values(publishResults).every((r) => !r.pending) && (
+              <p className="text-xs text-muted-foreground text-center pt-1">
+                {Object.values(publishResults).some((r) => r.success)
+                  ? "Successfully posted! Listing saved to your inventory."
+                  : "Listing saved to inventory. Connect your accounts in Platforms to enable auto-posting."}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              className="w-full"
+              onClick={handlePublishDialogClose}
+              disabled={Object.values(publishResults).some((r) => r.pending)}
+            >
+              {Object.values(publishResults).some((r) => r.pending) ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Posting…</>
+              ) : "Done — View Listing"}
             </Button>
           </DialogFooter>
         </DialogContent>
