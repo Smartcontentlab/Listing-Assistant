@@ -113,3 +113,59 @@ export async function postToPoshmark(listing: Listing): Promise<{ success: boole
     await context.close();
   }
 }
+
+export async function delistFromPoshmark(listing: { title: string }): Promise<{ success: boolean; error?: string }> {
+  const context = await getContext("poshmark");
+  const page = await context.newPage();
+  try {
+    // Go to "My Closet" active listings
+    await page.goto(`${POSHMARK_URL}/closet/my`, { waitUntil: "domcontentloaded", timeout: 30000 });
+    if (page.url().includes("/login")) {
+      return { success: false, error: "Session expired — please re-login in Platforms settings." };
+    }
+
+    // Find listing tile by title text
+    const titleLower = listing.title.toLowerCase();
+    const tiles = await page.$$('[class*="tile"], [class*="listing"], [data-test*="item"]');
+    let found = false;
+
+    for (const tile of tiles) {
+      const text = (await tile.innerText().catch(() => "")).toLowerCase();
+      if (text.includes(titleLower.slice(0, 20))) {
+        // Click to open the listing
+        await tile.click();
+        await page.waitForLoadState("domcontentloaded");
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      return { success: false, error: `Listing "${listing.title}" not found in Poshmark closet.` };
+    }
+
+    // Click the edit button / three-dot menu
+    await page.click('[aria-label="Edit listing"], [data-test="edit-listing"], button:has-text("Edit")').catch(() =>
+      page.click('[class*="overflow"], [aria-label="More options"], [class*="kebab"]')
+    );
+    await page.waitForTimeout(800);
+
+    // Click Delete
+    await page.click('text="Delete"').catch(() =>
+      page.click('[data-test="delete-listing"], button:has-text("Delete listing")')
+    );
+    await page.waitForTimeout(600);
+
+    // Confirm delete in the modal
+    await page.click('text="Yes, delete", text="Confirm", text="Delete"').catch(() => null);
+    await page.waitForTimeout(1500);
+
+    await saveSession("poshmark", context);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: `Poshmark delist failed: ${String(err)}` };
+  } finally {
+    await page.close();
+    await context.close();
+  }
+}

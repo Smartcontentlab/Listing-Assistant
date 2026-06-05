@@ -201,7 +201,7 @@ Return ONLY a valid JSON object:
 {
   "title": "compelling title under 60 chars — lead with brand if known",
   "brand": "brand name or empty string",
-  "category": "one of: tops, bottoms, dresses, outerwear, shoes, bags, accessories, activewear, swimwear, other",
+  "category": "one of: tops, bottoms, dresses, outerwear, shoes, bags, accessories, activewear, swimwear, beauty, home, electronics, collectibles, books, toys, sports, other",
   "size": "size or empty string",
   "condition": "one of: new_with_tags, new_without_tags, excellent, good, fair",
   "price": "suggested resale price as number string based on brand and condition",

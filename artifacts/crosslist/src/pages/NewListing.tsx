@@ -35,7 +35,8 @@ const CONDITIONS = [
 ];
 
 const CATEGORIES = [
-  "Tops", "Bottoms", "Dresses", "Outerwear", "Shoes", "Bags", "Accessories", "Activewear", "Swimwear", "Other"
+  "Tops", "Bottoms", "Dresses", "Outerwear", "Shoes", "Bags", "Accessories", "Activewear", "Swimwear",
+  "Beauty", "Home", "Electronics", "Collectibles", "Books", "Toys", "Sports", "Other"
 ];
 
 interface ImageItem {

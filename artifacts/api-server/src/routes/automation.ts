@@ -3,9 +3,9 @@ import { db } from "@workspace/db";
 import { credentialsTable, listingsTable } from "@workspace/db/schema";
 import { eq } from "drizzle-orm";
 import { hasSession, clearSession } from "../automation/browser.js";
-import { loginPoshmark, postToPoshmark } from "../automation/poshmark.js";
-import { loginDepop, postToDepop } from "../automation/depop.js";
-import { loginMercari, postToMercari } from "../automation/mercari.js";
+import { loginPoshmark, postToPoshmark, delistFromPoshmark } from "../automation/poshmark.js";
+import { loginDepop, postToDepop, delistFromDepop } from "../automation/depop.js";
+import { loginMercari, postToMercari, delistFromMercari } from "../automation/mercari.js";
 
 const router = Router();
 
@@ -19,6 +19,12 @@ const postFns: Record<string, (listing: any) => Promise<{ success: boolean; url?
   poshmark: postToPoshmark,
   depop: postToDepop,
   mercari: postToMercari,
+};
+
+const delistFns: Record<string, (listing: { title: string }) => Promise<{ success: boolean; error?: string }>> = {
+  poshmark: delistFromPoshmark,
+  depop: delistFromDepop,
+  mercari: delistFromMercari,
 };
 
 // GET /automation/credentials — list connected platforms
@@ -94,6 +100,36 @@ router.post("/automation/post/:listingId", async (req, res) => {
   const allSuccess = Object.values(results).every((r) => r.success);
   if (allSuccess) {
     await db.update(listingsTable).set({ status: "published", updatedAt: new Date() }).where(eq(listingsTable.id, id));
+  }
+
+  return res.json({ results });
+});
+
+// POST /automation/delist/:listingId — remove from all platforms (or a specific one)
+router.post("/automation/delist/:listingId", async (req, res) => {
+  const id = Number(req.params.listingId);
+  if (isNaN(id)) return res.status(400).json({ error: "Invalid listing id" });
+
+  const { platform: specificPlatform } = req.body ?? {};
+
+  const [listing] = await db.select().from(listingsTable).where(eq(listingsTable.id, id));
+  if (!listing) return res.status(404).json({ error: "Listing not found" });
+
+  const platforms = specificPlatform
+    ? [specificPlatform]
+    : (listing.platforms ?? []);
+
+  if (!platforms.length) return res.status(400).json({ error: "No platforms on this listing" });
+
+  const results: Record<string, { success: boolean; error?: string }> = {};
+
+  for (const platform of platforms) {
+    const delistFn = delistFns[platform.toLowerCase()];
+    if (!delistFn) {
+      results[platform] = { success: false, error: "Delist not supported for this platform yet" };
+      continue;
+    }
+    results[platform] = await delistFn({ title: listing.title });
   }
 
   return res.json({ results });

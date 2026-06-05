@@ -3,7 +3,11 @@ import { useListListings } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { CheckCircle2, Circle, Package, Printer, Truck, Calendar, DollarSign, AlertTriangle, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  CheckCircle2, Circle, Package, Printer, Truck, Calendar, DollarSign,
+  AlertTriangle, X, Zap, Loader2, RotateCcw
+} from "lucide-react";
 import { PlatformIcon } from "@/components/PlatformIcon";
 
 const SHIP_TASKS = [
@@ -50,6 +54,8 @@ export default function SoldTracker() {
   const { data: allListings, isLoading } = useListListings({} as any);
   const [shipTasks, setShipTasks] = useLocalStorage<Record<string, boolean>>("crosslist_ship_tasks", {});
   const [delisted, setDelisted] = useLocalStorage<Record<string, string[]>>("crosslist_delisted", {});
+  const [removing, setRemoving] = useState<Record<string, boolean>>({});
+  const [removeResults, setRemoveResults] = useState<Record<string, Record<string, { success: boolean; error?: string }>>>({});
 
   const soldListings = (allListings ?? []).filter((l: any) => l.status === "sold");
 
@@ -74,6 +80,41 @@ export default function SoldTracker() {
 
   function allShipped(listingId: number) {
     return SHIP_TASKS.every((t) => shipTasks[`${listingId}-${t.id}`]);
+  }
+
+  async function autoRemovePlatform(listingId: number, platform: string) {
+    const key = `${listingId}-${platform}`;
+    setRemoving((prev) => ({ ...prev, [key]: true }));
+    try {
+      const resp = await fetch(`/api/automation/delist/${listingId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platform }),
+      });
+      const data = await resp.json();
+      const result = data.results?.[platform] ?? { success: false, error: "No response" };
+      setRemoveResults((prev) => ({
+        ...prev,
+        [listingId]: { ...(prev[listingId] ?? {}), [platform]: result },
+      }));
+      if (result.success) {
+        markDelisted(listingId, platform);
+      }
+    } catch {
+      setRemoveResults((prev) => ({
+        ...prev,
+        [listingId]: { ...(prev[listingId] ?? {}), [platform]: { success: false, error: "Network error" } },
+      }));
+    } finally {
+      setRemoving((prev) => ({ ...prev, [key]: false }));
+    }
+  }
+
+  async function autoRemoveAll(listing: any) {
+    const platforms = (listing.platforms ?? []).filter((p: string) => !isDelisted(listing.id, p));
+    for (const platform of platforms) {
+      await autoRemovePlatform(listing.id, platform);
+    }
   }
 
   // Group sold items by date for the calendar summary
@@ -174,6 +215,8 @@ export default function SoldTracker() {
           const remainingPlatforms = (listing.platforms ?? []).filter((p: string) => !isDelisted(listing.id, p));
           const allDelisted = remainingPlatforms.length === 0;
           const tasksDone = SHIP_TASKS.filter((t) => shipTasks[`${listing.id}-${t.id}`]).length;
+          const listingRemoveResults = removeResults[listing.id] ?? {};
+          const anyRemoving = remainingPlatforms.some((p: string) => removing[`${listing.id}-${p}`]);
 
           return (
             <Card key={listing.id} className={`transition-all ${shipped && allDelisted ? "opacity-55" : ""}`}>
@@ -221,30 +264,73 @@ export default function SoldTracker() {
                 {/* Platform delisting */}
                 {(listing.platforms ?? []).length > 0 && (
                   <div className="border-t border-border pt-3 space-y-2">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Remove from other platforms</p>
-                      {!allDelisted && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">Remove from other platforms</p>
+                        {!allDelisted && <AlertTriangle className="h-3 w-3 text-amber-500" />}
+                      </div>
+                      {!allDelisted && remainingPlatforms.length > 1 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 px-2 text-[10px] gap-1 border-violet-200 text-violet-700 hover:bg-violet-50"
+                          onClick={() => autoRemoveAll(listing)}
+                          disabled={anyRemoving}
+                        >
+                          {anyRemoving ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Zap className="h-3 w-3" />
+                          )}
+                          Auto Remove All
+                        </Button>
+                      )}
                     </div>
                     <div className="space-y-1.5">
                       {(listing.platforms ?? []).map((platform: string) => {
                         const done = isDelisted(listing.id, platform);
+                        const platformRemoving = removing[`${listing.id}-${platform}`];
+                        const platformResult = listingRemoveResults[platform];
                         return (
                           <div key={platform} className={`flex items-center justify-between px-3 py-2 rounded-lg border ${done ? "border-border bg-muted/30 opacity-50" : "border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800"}`}>
                             <div className="flex items-center gap-2">
                               {done ? <CheckCircle2 className="h-4 w-4 text-emerald-500" /> : <AlertTriangle className="h-4 w-4 text-amber-500" />}
                               <PlatformIcon name={platform} size="sm" />
                               <span className="text-sm font-medium capitalize">{platform}</span>
+                              {platformResult && !platformResult.success && !done && (
+                                <span className="text-[10px] text-destructive truncate max-w-[120px]" title={platformResult.error}>
+                                  · {platformResult.error?.slice(0, 30)}
+                                </span>
+                              )}
                             </div>
                             {done ? (
                               <span className="text-xs text-muted-foreground">Removed</span>
                             ) : (
-                              <button
-                                onClick={() => markDelisted(listing.id, platform)}
-                                className="flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 transition-colors"
-                              >
-                                <X className="h-3 w-3" />
-                                Mark Removed
-                              </button>
+                              <div className="flex items-center gap-1.5">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-[10px] gap-1 text-violet-700 hover:bg-violet-50 hover:text-violet-900"
+                                  onClick={() => autoRemovePlatform(listing.id, platform)}
+                                  disabled={platformRemoving}
+                                  title="Auto-remove via browser automation"
+                                >
+                                  {platformRemoving ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Zap className="h-3 w-3" />
+                                  )}
+                                  Auto
+                                </Button>
+                                <button
+                                  onClick={() => markDelisted(listing.id, platform)}
+                                  className="flex items-center gap-1 text-xs font-semibold text-amber-700 dark:text-amber-400 hover:text-amber-900 transition-colors"
+                                  title="Mark as manually removed"
+                                >
+                                  <X className="h-3 w-3" />
+                                  Done
+                                </button>
+                              </div>
                             )}
                           </div>
                         );
@@ -252,7 +338,7 @@ export default function SoldTracker() {
                     </div>
                     {!allDelisted && (
                       <p className="text-[10px] text-amber-600 dark:text-amber-400">
-                        ⚠️ Go to each platform above and manually delete these listings to avoid double-selling.
+                        ⚡ "Auto" uses browser automation to delete the listing. "Done" marks it removed manually.
                       </p>
                     )}
                   </div>

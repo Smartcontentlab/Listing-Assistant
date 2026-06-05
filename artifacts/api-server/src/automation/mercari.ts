@@ -111,3 +111,54 @@ export async function postToMercari(listing: Listing): Promise<{ success: boolea
     await context.close();
   }
 }
+
+export async function delistFromMercari(listing: { title: string }): Promise<{ success: boolean; error?: string }> {
+  const context = await getContext("mercari");
+  const page = await context.newPage();
+  try {
+    await page.goto(`${MERCARI_URL}/mypage/listings/`, { waitUntil: "domcontentloaded", timeout: 30000 });
+    if (page.url().includes("/login")) {
+      return { success: false, error: "Session expired — please re-login in Platforms settings." };
+    }
+
+    const titleLower = listing.title.toLowerCase();
+    const items = await page.$$('[class*="item"], [data-testid*="listing"], [class*="product"]');
+    let found = false;
+
+    for (const item of items) {
+      const text = (await item.innerText().catch(() => "")).toLowerCase();
+      if (text.includes(titleLower.slice(0, 20))) {
+        await item.click();
+        await page.waitForLoadState("domcontentloaded");
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      return { success: false, error: `Listing "${listing.title}" not found on Mercari.` };
+    }
+
+    // Click Edit or three-dot menu
+    await page.click('button:has-text("Edit"), [aria-label="Edit listing"], [data-testid="edit"]').catch(() =>
+      page.click('[aria-label="More options"], [class*="menu-button"]')
+    );
+    await page.waitForTimeout(600);
+
+    // Click Delete
+    await page.click('button:has-text("Delete"), [data-testid="delete"]').catch(() => null);
+    await page.waitForTimeout(600);
+
+    // Confirm
+    await page.click('button:has-text("Confirm"), button:has-text("Yes"), button:has-text("Delete")').catch(() => null);
+    await page.waitForTimeout(1500);
+
+    await saveSession("mercari", context);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: `Mercari delist failed: ${String(err)}` };
+  } finally {
+    await page.close();
+    await context.close();
+  }
+}

@@ -21,7 +21,7 @@ const CONDITIONS = [
   { value: "fair", label: "Fair" },
 ];
 
-const CATEGORIES = ["tops","bottoms","dresses","outerwear","shoes","bags","accessories","activewear","swimwear","other"];
+const CATEGORIES = ["tops","bottoms","dresses","outerwear","shoes","bags","accessories","activewear","swimwear","beauty","home","electronics","collectibles","books","toys","sports","other"];
 
 const PLATFORMS = [
   { id: "poshmark", label: "Poshmark" },
