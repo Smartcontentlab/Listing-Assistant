@@ -98,9 +98,19 @@ router.post("/automation/post/:listingId", async (req, res) => {
   }
 
   const allSuccess = Object.values(results).every((r) => r.success);
-  if (allSuccess) {
-    await db.update(listingsTable).set({ status: "published", updatedAt: new Date() }).where(eq(listingsTable.id, id));
+
+  // Build platformUrls map from successful results
+  const existingUrls = listing.platformUrls ? JSON.parse(listing.platformUrls) : {};
+  const newUrls = { ...existingUrls };
+  for (const [platform, result] of Object.entries(results)) {
+    if (result.success && result.url) newUrls[platform] = result.url;
   }
+
+  await db.update(listingsTable).set({
+    status: allSuccess ? "published" : listing.status,
+    platformUrls: JSON.stringify(newUrls),
+    updatedAt: new Date(),
+  }).where(eq(listingsTable.id, id));
 
   return res.json({ results });
 });

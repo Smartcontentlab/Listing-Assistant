@@ -10,7 +10,7 @@ export interface AppNotification {
   listingId?: number;
 }
 
-const POLL_INTERVAL = 60_000; // 1 minute
+const POLL_INTERVAL = 300_000; // 5 minutes
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);

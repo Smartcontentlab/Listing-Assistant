@@ -35,6 +35,7 @@ export const listingsTable = pgTable("listings", {
   mercariDescription: text("mercari_description"),
   soldPrice: numeric("sold_price", { precision: 10, scale: 2 }),
   soldAt: timestamp("sold_at"),
+  platformUrls: text("platform_urls"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

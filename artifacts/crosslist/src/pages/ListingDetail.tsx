@@ -19,7 +19,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Package, Loader2, Sparkles, Send, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft, Package, Loader2, Sparkles, Send, CheckCircle2,
+  Circle, Printer, Truck, ExternalLink, AlertTriangle
+} from "lucide-react";
 import { PlatformIcon } from "@/components/PlatformIcon";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -38,6 +41,35 @@ const PLATFORMS_DEF = [
   { id: "depop", label: "Depop" },
   { id: "mercari", label: "Mercari" },
 ];
+
+const SHIP_TASKS = [
+  { id: "label", label: "Print shipping label", icon: Printer },
+  { id: "pack", label: "Package item", icon: Package },
+  { id: "ship", label: "Drop off / ship", icon: Truck },
+];
+
+const PLATFORM_FALLBACK_URLS: Record<string, string> = {
+  poshmark: "https://poshmark.com/closet/my",
+  depop: "https://www.depop.com/selling/",
+  mercari: "https://www.mercari.com/mypage/listings/",
+};
+
+function useLocalStorage<T>(key: string, initial: T): [T, (val: T | ((prev: T) => T)) => void] {
+  const [state, setState] = useState<T>(() => {
+    try {
+      const stored = localStorage.getItem(key);
+      return stored ? JSON.parse(stored) : initial;
+    } catch { return initial; }
+  });
+  const setter = (val: T | ((prev: T) => T)) => {
+    setState((prev) => {
+      const next = typeof val === "function" ? (val as (p: T) => T)(prev) : val;
+      try { localStorage.setItem(key, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+  return [state, setter];
+}
 
 function statusBadge(status: string) {
   const map: Record<string, string> = {
@@ -79,6 +111,12 @@ export default function ListingDetail({ params }: Props) {
   const [soldPrice, setSoldPrice] = useState("");
   const [publishDialog, setPublishDialog] = useState(false);
   const [selectedPublishPlatforms, setSelectedPublishPlatforms] = useState<string[]>(["poshmark", "depop", "mercari"]);
+
+  const [shipTasks, setShipTasks] = useLocalStorage<Record<string, boolean>>("crosslist_ship_tasks", {});
+
+  function toggleTask(taskId: string) {
+    setShipTasks((prev) => ({ ...prev, [`${id}-${taskId}`]: !prev[`${id}-${taskId}`] }));
+  }
 
   function startEdit() {
     if (!listing) return;
@@ -182,6 +220,13 @@ export default function ListingDetail({ params }: Props) {
     );
   }
 
+  const platformUrls: Record<string, string> = listing.platformUrls
+    ? JSON.parse(listing.platformUrls as string)
+    : {};
+
+  const tasksDone = SHIP_TASKS.filter((t) => shipTasks[`${id}-${t.id}`]).length;
+  const allShipped = tasksDone === SHIP_TASKS.length;
+
   return (
     <div className="flex-1 p-6 overflow-auto">
       <div className="max-w-4xl mx-auto space-y-5">
@@ -194,6 +239,9 @@ export default function ListingDetail({ params }: Props) {
             <div className="flex items-center gap-2 mt-0.5">
               {statusBadge(listing.status)}
               <span className="text-sm text-muted-foreground">${Number(listing.price).toFixed(2)}</span>
+              {listing.status === "sold" && listing.soldPrice && (
+                <span className="text-sm font-semibold text-emerald-600">Sold: ${Number(listing.soldPrice).toFixed(2)}</span>
+              )}
             </div>
           </div>
           <div className="flex gap-2 shrink-0">
@@ -227,6 +275,98 @@ export default function ListingDetail({ params }: Props) {
                 <img src={url} alt={`Image ${i}`} className="h-full w-full object-cover" />
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Sold: shipping checklist + platform links */}
+        {listing.status === "sold" && (
+          <Card className="border-violet-200 dark:border-violet-800">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Package className="h-4 w-4 text-violet-500" />
+                Sold — Ship & Remove
+                {allShipped && (
+                  <span className="ml-auto text-[10px] font-normal bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Shipped ✓</span>
+                )}
+                {!allShipped && (
+                  <span className="ml-auto text-[10px] font-normal text-amber-600">{tasksDone}/{SHIP_TASKS.length} done</span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Shipping checklist */}
+              <div className="space-y-1">
+                {SHIP_TASKS.map((task) => {
+                  const done = shipTasks[`${id}-${task.id}`];
+                  return (
+                    <button
+                      key={task.id}
+                      onClick={() => toggleTask(task.id)}
+                      className="w-full flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                    >
+                      {done
+                        ? <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                        : <Circle className="h-5 w-5 text-muted-foreground/40 shrink-0" />}
+                      <task.icon className={`h-4 w-4 shrink-0 ${done ? "text-emerald-500" : "text-muted-foreground"}`} />
+                      <span className={`text-sm ${done ? "line-through text-muted-foreground" : ""}`}>{task.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Platform links */}
+              {(listing.platforms ?? []).length > 0 && (
+                <div className="border-t border-border pt-3">
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold mb-2 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3 text-amber-500" />
+                    Remove from platforms
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(listing.platforms ?? []).map((platform) => {
+                      const url = platformUrls[platform] ?? PLATFORM_FALLBACK_URLS[platform] ?? `https://${platform}.com`;
+                      return (
+                        <a
+                          key={platform}
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 hover:bg-amber-100 transition-colors text-sm font-medium text-amber-800 dark:text-amber-300"
+                        >
+                          <PlatformIcon name={platform} size="sm" />
+                          <span className="capitalize">{platform}</span>
+                          <ExternalLink className="h-3 w-3 opacity-60" />
+                        </a>
+                      );
+                    })}
+                  </div>
+                  <p className="text-[10px] text-amber-600 mt-2">
+                    Click to open your listing — delete it there to avoid double-selling.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Platform links for published items */}
+        {listing.status === "published" && (listing.platforms ?? []).length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {(listing.platforms ?? []).map((platform) => {
+              const url = platformUrls[platform] ?? PLATFORM_FALLBACK_URLS[platform] ?? `https://${platform}.com`;
+              return (
+                <a
+                  key={platform}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border hover:bg-muted/50 transition-colors text-xs font-medium text-muted-foreground hover:text-foreground"
+                >
+                  <PlatformIcon name={platform} size="sm" />
+                  <span className="capitalize">View on {platform}</span>
+                  <ExternalLink className="h-3 w-3 opacity-50" />
+                </a>
+              );
+            })}
           </div>
         )}
 
