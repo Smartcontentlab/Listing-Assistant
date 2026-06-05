@@ -207,6 +207,11 @@ Return ONLY a valid JSON object:
   "price": "suggested resale price as number string based on brand and condition",
   "originalPrice": "original retail price if known, else empty string",
   "notes": "measurements, specific flaws seen in photos, color, material details",
+  "color": "primary color(s) of the item as a short string e.g. 'Black', 'Navy Blue', 'White/Black'",
+  "poshmarkStyle": "one of: Casual, Formal, Athletic, Business Casual, Bohemian, Streetwear, Vintage/Retro, Party/Cocktail, Preppy, Beach/Swim",
+  "poshmarkCategory": "most specific Poshmark category that applies e.g. 'Jeans', 'Blouses', 'Sneakers', 'Jackets & Coats'",
+  "depopTags": "10-12 comma-separated hashtag words WITHOUT the # symbol (e.g. 'vintage,levi501,y2kdenim,thrifted,denimjeans,90sfashion,streetwear,upcycled')",
+  "mercariShipping": "one of: seller (seller pays), free (free shipping), buyer (buyer pays) — default to seller",
   "poshmarkDescription": "full SEO-heavy Poshmark description per rules above",
   "depopDescription": "full casual Depop description with hashtags per rules above",
   "mercariDescription": "full factual Mercari description per rules above"

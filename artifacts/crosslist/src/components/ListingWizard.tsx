@@ -47,6 +47,7 @@ interface ListingData {
   price: string;
   originalPrice: string;
   notes: string;
+  color: string;
   selectedPlatforms: string[];
   poshmarkDescription: string;
   depopDescription: string;
@@ -54,12 +55,8 @@ interface ListingData {
   // Platform-specific fields
   poshmarkCategory: string;
   poshmarkStyle: string;
-  poshmarkColor: string;
-  depopCategory: string;
-  depopColor: string;
-  deparTags: string;
+  depopTags: string;
   mercariShipping: string;
-  mercariColor: string;
 }
 
 export default function ListingWizard() {
@@ -88,13 +85,13 @@ export default function ListingWizard() {
 
   const [listing, setListing] = useState<ListingData>({
     title: "", brand: "", size: "", category: "", condition: "good",
-    price: "", originalPrice: "", notes: "",
+    price: "", originalPrice: "", notes: "", color: "",
     selectedPlatforms: ["poshmark", "depop", "mercari"],
     poshmarkDescription: "", depopDescription: "", mercariDescription: "",
-    poshmarkCategory: "", poshmarkStyle: "", poshmarkColor: "",
-    depopCategory: "", depopColor: "", depopTags: "",
-    mercariShipping: "seller", mercariColor: "",
-  } as any);
+    poshmarkCategory: "", poshmarkStyle: "",
+    depopTags: "",
+    mercariShipping: "seller",
+  });
 
   const removeBg = useRemoveBackground();
   const createListing = useCreateListing();
@@ -163,22 +160,28 @@ export default function ListingWizard() {
 
   function acceptIdentify() {
     if (!identifyData) return;
+    const d = identifyData as any;
     setListing((prev) => ({
       ...prev,
-      title: identifyData.title ?? prev.title,
-      brand: identifyData.brand ?? prev.brand,
-      size: identifyData.size ?? prev.size,
-      category: identifyData.category ?? prev.category,
-      condition: identifyData.condition ?? prev.condition,
-      price: identifyData.price ?? prev.price,
-      originalPrice: identifyData.originalPrice ?? prev.originalPrice,
-      notes: identifyData.notes ?? prev.notes,
-      poshmarkDescription: (identifyData as any).poshmarkDescription ?? prev.poshmarkDescription,
-      depopDescription: (identifyData as any).depopDescription ?? prev.depopDescription,
-      mercariDescription: (identifyData as any).mercariDescription ?? prev.mercariDescription,
+      title: d.title ?? prev.title,
+      brand: d.brand ?? prev.brand,
+      size: d.size ?? prev.size,
+      category: d.category ?? prev.category,
+      condition: d.condition ?? prev.condition,
+      price: d.price ?? prev.price,
+      originalPrice: d.originalPrice ?? prev.originalPrice,
+      notes: d.notes ?? prev.notes,
+      color: d.color ?? prev.color,
+      poshmarkStyle: d.poshmarkStyle ?? prev.poshmarkStyle,
+      poshmarkCategory: d.poshmarkCategory ?? prev.poshmarkCategory,
+      depopTags: d.depopTags ?? prev.depopTags,
+      mercariShipping: d.mercariShipping ?? prev.mercariShipping,
+      poshmarkDescription: d.poshmarkDescription ?? prev.poshmarkDescription,
+      depopDescription: d.depopDescription ?? prev.depopDescription,
+      mercariDescription: d.mercariDescription ?? prev.mercariDescription,
     }));
     setShowIdentifyDialog(false);
-    fetchPriceComps(identifyData.title ?? "");
+    fetchPriceComps(d.title ?? "");
   }
 
   async function fetchPriceComps(query: string) {
@@ -408,6 +411,75 @@ export default function ListingWizard() {
                   </CardContent>
                 </Card>
 
+                {/* Platform-specific required fields */}
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm">Platform Details</CardTitle></CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Shared color */}
+                    <div className="space-y-1">
+                      <Label className="text-xs">Color</Label>
+                      <Input value={listing.color} onChange={(e) => update("color", e.target.value)} placeholder="e.g. Black, Navy Blue, White/Black" />
+                    </div>
+
+                    {listing.selectedPlatforms.includes("poshmark") && (
+                      <div className="rounded-lg border border-border p-3 space-y-3">
+                        <p className="text-xs font-semibold flex items-center gap-1.5"><PlatformIcon name="poshmark" size="sm" />Poshmark</p>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Category</Label>
+                            <Input value={listing.poshmarkCategory} onChange={(e) => update("poshmarkCategory", e.target.value)} placeholder="e.g. Jeans, Blouses" className="text-xs" />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Style</Label>
+                            <Select value={listing.poshmarkStyle} onValueChange={(v) => update("poshmarkStyle", v)}>
+                              <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Select style" /></SelectTrigger>
+                              <SelectContent>
+                                {["Casual","Formal","Athletic","Business Casual","Bohemian","Streetwear","Vintage/Retro","Party/Cocktail","Preppy","Beach/Swim"].map((s) => (
+                                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {listing.selectedPlatforms.includes("depop") && (
+                      <div className="rounded-lg border border-border p-3 space-y-2">
+                        <p className="text-xs font-semibold flex items-center gap-1.5"><PlatformIcon name="depop" size="sm" />Depop</p>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Hashtags <span className="text-muted-foreground font-normal">(comma-separated, no # needed)</span></Label>
+                          <Input value={listing.depopTags} onChange={(e) => update("depopTags", e.target.value)} placeholder="vintage,levi501,y2kdenim,thrifted" className="text-xs" />
+                          {listing.depopTags && (
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {listing.depopTags.split(",").map((t) => t.trim()).filter(Boolean).map((tag) => (
+                                <span key={tag} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">#{tag}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {listing.selectedPlatforms.includes("mercari") && (
+                      <div className="rounded-lg border border-border p-3 space-y-2">
+                        <p className="text-xs font-semibold flex items-center gap-1.5"><PlatformIcon name="mercari" size="sm" />Mercari</p>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Shipping</Label>
+                          <Select value={listing.mercariShipping} onValueChange={(v) => update("mercariShipping", v)}>
+                            <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="seller">Seller pays shipping</SelectItem>
+                              <SelectItem value="free">Free shipping (I cover it)</SelectItem>
+                              <SelectItem value="buyer">Buyer pays shipping</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
                 {/* Platform descriptions */}
                 <Card>
                   <CardHeader className="pb-2">
@@ -423,19 +495,19 @@ export default function ListingWizard() {
                     {listing.selectedPlatforms.includes("poshmark") && (
                       <div className="space-y-1">
                         <Label className="flex items-center gap-1.5 text-xs font-semibold"><PlatformIcon name="poshmark" />Poshmark</Label>
-                        <Textarea value={listing.poshmarkDescription} onChange={(e) => update("poshmarkDescription", e.target.value)} rows={4} className="text-xs" placeholder="AI will fill this…" />
+                        <Textarea value={listing.poshmarkDescription} onChange={(e) => update("poshmarkDescription", e.target.value)} rows={5} className="text-xs" placeholder="AI will fill this…" />
                       </div>
                     )}
                     {listing.selectedPlatforms.includes("depop") && (
                       <div className="space-y-1">
                         <Label className="flex items-center gap-1.5 text-xs font-semibold"><PlatformIcon name="depop" />Depop</Label>
-                        <Textarea value={listing.depopDescription} onChange={(e) => update("depopDescription", e.target.value)} rows={4} className="text-xs" placeholder="AI will fill this…" />
+                        <Textarea value={listing.depopDescription} onChange={(e) => update("depopDescription", e.target.value)} rows={5} className="text-xs" placeholder="AI will fill this…" />
                       </div>
                     )}
                     {listing.selectedPlatforms.includes("mercari") && (
                       <div className="space-y-1">
                         <Label className="flex items-center gap-1.5 text-xs font-semibold"><PlatformIcon name="mercari" />Mercari</Label>
-                        <Textarea value={listing.mercariDescription} onChange={(e) => update("mercariDescription", e.target.value)} rows={4} className="text-xs" placeholder="AI will fill this…" />
+                        <Textarea value={listing.mercariDescription} onChange={(e) => update("mercariDescription", e.target.value)} rows={5} className="text-xs" placeholder="AI will fill this…" />
                       </div>
                     )}
                   </CardContent>
