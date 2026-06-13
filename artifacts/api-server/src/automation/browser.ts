@@ -1,7 +1,10 @@
-import { chromium, type Browser, type BrowserContext } from "playwright";
+import { chromium, type Browser, type BrowserContext } from "playwright-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import * as fs from "fs";
 import * as path from "path";
+
+// Apply stealth plugin to avoid headless detection
+chromium.use(StealthPlugin());
 
 const SESSION_DIR = path.resolve(process.cwd(), ".browser-sessions");
 if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true });
@@ -66,20 +69,24 @@ export async function getContext(platform: string): Promise<BrowserContext> {
   
   // Add anti-detection scripts
   await context.addInitScript(() => {
+    // TypeScript doesn't know about browser globals in this context
+    const win = window as any;
+    const nav = navigator as any;
+    
     // Remove webdriver flag
-    Object.defineProperty(navigator, 'webdriver', {
+    Object.defineProperty(nav, 'webdriver', {
       get: () => undefined,
     });
     
     // Mock chrome.runtime
-    if (!window.chrome) {
-      (window as any).chrome = { runtime: {} };
+    if (!win.chrome) {
+      win.chrome = { runtime: {} };
     }
     
     // Mock permissions
-    const originalQuery = navigator.permissions?.query;
+    const originalQuery = nav.permissions?.query;
     if (originalQuery) {
-      navigator.permissions.query = (parameters: any) => {
+      nav.permissions.query = (parameters: any) => {
         if (parameters.name === 'notifications') {
           return Promise.resolve({ state: 'granted' } as PermissionStatus);
         }
@@ -88,7 +95,7 @@ export async function getContext(platform: string): Promise<BrowserContext> {
     }
     
     // Mock plugins
-    Object.defineProperty(navigator, 'plugins', {
+    Object.defineProperty(nav, 'plugins', {
       get: () => [
         { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer' },
         { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
@@ -97,12 +104,12 @@ export async function getContext(platform: string): Promise<BrowserContext> {
     });
     
     // Mock languages
-    Object.defineProperty(navigator, 'languages', {
+    Object.defineProperty(nav, 'languages', {
       get: () => ['en-US', 'en'],
     });
     
     // Mock hardware concurrency
-    Object.defineProperty(navigator, 'hardwareConcurrency', {
+    Object.defineProperty(nav, 'hardwareConcurrency', {
       get: () => 8,
     });
   });
